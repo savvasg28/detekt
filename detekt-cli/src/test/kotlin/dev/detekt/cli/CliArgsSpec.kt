@@ -368,14 +368,14 @@ internal class CliArgsSpec {
         fun `unsupported --api-version returns error message`() {
             assertThatExceptionOfType(HandledArgumentViolation::class.java)
                 .isThrownBy { parseArguments(arrayOf("--api-version", "1.9")) }
-                .withMessageStartingWith("\"1.9\" passed to --api-version, expected one of [2.0, 2.1, 2.2, 2.3, 2.4, ")
+                .withMessageStartingWith("\"1.9\" passed to --api-version, expected one of [2.2, 2.3, 2.4, 2.5, 2.6, ")
         }
 
         @Test
         fun `invalid --api-version returns error message`() {
             assertThatExceptionOfType(HandledArgumentViolation::class.java)
                 .isThrownBy { parseArguments(arrayOf("--api-version", "x")) }
-                .withMessageStartingWith("\"x\" passed to --api-version, expected one of [2.0, 2.1, 2.2, 2.3, 2.4, ")
+                .withMessageStartingWith("\"x\" passed to --api-version, expected one of [2.2, 2.3, 2.4, 2.5, 2.6, ")
         }
 
         @Test
@@ -389,7 +389,7 @@ internal class CliArgsSpec {
             assertThatExceptionOfType(HandledArgumentViolation::class.java)
                 .isThrownBy { parseArguments(arrayOf("--language-version", "1.9")) }
                 .withMessageStartingWith(
-                    "\"1.9\" passed to --language-version, expected one of [2.0, 2.1, 2.2, 2.3, 2.4, "
+                    "\"1.9\" passed to --language-version, expected one of [2.2, 2.3, 2.4, 2.5, 2.6, "
                 )
         }
 
@@ -398,7 +398,7 @@ internal class CliArgsSpec {
             assertThatExceptionOfType(HandledArgumentViolation::class.java)
                 .isThrownBy { parseArguments(arrayOf("--language-version", "x")) }
                 .withMessageStartingWith(
-                    "\"x\" passed to --language-version, expected one of [2.0, 2.1, 2.2, 2.3, 2.4, "
+                    "\"x\" passed to --language-version, expected one of [2.2, 2.3, 2.4, 2.5, 2.6, "
                 )
         }
 
