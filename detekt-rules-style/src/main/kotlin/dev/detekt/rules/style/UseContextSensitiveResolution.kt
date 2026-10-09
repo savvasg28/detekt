@@ -10,25 +10,20 @@ import dev.detekt.api.Finding
 import dev.detekt.api.RequiresAnalysisApi
 import dev.detekt.api.Rule
 import dev.detekt.psi.isPartOf
-import org.jetbrains.kotlin.analysis.api.KaContextParameterApi
 import org.jetbrains.kotlin.analysis.api.KaExperimentalApi
 import org.jetbrains.kotlin.analysis.api.KaSession
 import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.analysis.api.components.containingDeclaration
-import org.jetbrains.kotlin.analysis.api.components.expectedType
-import org.jetbrains.kotlin.analysis.api.components.expressionType
-import org.jetbrains.kotlin.analysis.api.components.isSubClassOf
-import org.jetbrains.kotlin.analysis.api.components.isSubtypeOf
-import org.jetbrains.kotlin.analysis.api.components.resolveSymbol
 import org.jetbrains.kotlin.analysis.api.components.resolveToCall
 import org.jetbrains.kotlin.analysis.api.components.resolveToCallCandidates
-import org.jetbrains.kotlin.analysis.api.components.returnType
 import org.jetbrains.kotlin.analysis.api.components.scopeContext
-import org.jetbrains.kotlin.analysis.api.components.semanticallyEquals
 import org.jetbrains.kotlin.analysis.api.diagnostics.KaDiagnosticWithPsi
+import org.jetbrains.kotlin.analysis.api.expressions.expectedType
+import org.jetbrains.kotlin.analysis.api.expressions.expressionType
+import org.jetbrains.kotlin.analysis.api.expressions.returnType
 import org.jetbrains.kotlin.analysis.api.resolution.KaCallCandidateInfo
 import org.jetbrains.kotlin.analysis.api.resolution.KaFunctionCall
 import org.jetbrains.kotlin.analysis.api.resolution.KaInapplicableCallCandidateInfo
+import org.jetbrains.kotlin.analysis.api.resolution.resolveSymbol
 import org.jetbrains.kotlin.analysis.api.resolution.successfulFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.resolution.symbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
@@ -42,12 +37,16 @@ import org.jetbrains.kotlin.analysis.api.symbols.KaPropertySymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaSymbolModality
 import org.jetbrains.kotlin.analysis.api.symbols.KaTypeParameterSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.containingDeclaration
+import org.jetbrains.kotlin.analysis.api.symbols.isSubClassOf
 import org.jetbrains.kotlin.analysis.api.symbols.markers.KaNamedSymbol
 import org.jetbrains.kotlin.analysis.api.types.KaClassType
 import org.jetbrains.kotlin.analysis.api.types.KaFlexibleType
 import org.jetbrains.kotlin.analysis.api.types.KaFunctionType
 import org.jetbrains.kotlin.analysis.api.types.KaType
 import org.jetbrains.kotlin.analysis.api.types.KaTypeParameterType
+import org.jetbrains.kotlin.analysis.api.types.isSubtypeOf
+import org.jetbrains.kotlin.analysis.api.types.semanticallyEquals
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtBinaryExpression
@@ -315,7 +314,6 @@ class UseContextSensitiveResolution(config: Config) :
         return names.first() != null && names.distinct().size == 1
     }
 
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun commonOwner(names: List<KtNameReferenceExpression>): KaNamedClassSymbol? =
         names
@@ -353,7 +351,6 @@ class UseContextSensitiveResolution(config: Config) :
 
     // Whether the qualifier names the class itself, like Role in Role.Admin or com.example.Role in
     // com.example.Role.Admin. In Color.Red the Color resolves to the companion, not the class
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun qualifiesWith(expression: KtDotQualifiedExpression, owner: KaNamedClassSymbol): Boolean {
         val name = receiverName(expression) ?: return false
@@ -373,7 +370,6 @@ class UseContextSensitiveResolution(config: Config) :
     }
 
     // The type whose scope the symbol is found in, if it's one context-sensitive resolution looks in
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun owner(symbol: KaSymbol): KaNamedClassSymbol? {
         val owner = symbol.containingDeclaration as? KaNamedClassSymbol ?: return null
@@ -396,7 +392,6 @@ class UseContextSensitiveResolution(config: Config) :
 
     // The expected type context-sensitive resolution would use, or null. The Analysis API's expectedType is
     // too generous for some positions, so those are worked out by hand
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun expectedType(expression: KtExpression): KaType? =
         when (val parent = expression.parent) {
@@ -434,7 +429,6 @@ class UseContextSensitiveResolution(config: Config) :
             declaration.typeReference == null
     }
 
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun argumentType(argument: KtValueArgument, expression: KtExpression): KaType? {
         val call = callOf(argument)
@@ -442,7 +436,6 @@ class UseContextSensitiveResolution(config: Config) :
         return if (inferred) null else expression.expectedType
     }
 
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun operandType(binary: KtBinaryExpression, operand: KtExpression): KaType? =
         when (binary.operationToken) {
@@ -492,7 +485,6 @@ class UseContextSensitiveResolution(config: Config) :
             this is KtTryExpression ||
             this is KtCatchClause
 
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun subjectType(whenExpression: KtWhenExpression): KaType? =
         whenExpression.subjectVariable?.returnType ?: whenExpression.subjectExpression?.expressionType
@@ -514,7 +506,6 @@ class UseContextSensitiveResolution(config: Config) :
         return isInferred(call, lambda) { type -> (type as? KaFunctionType)?.returnType }
     }
 
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun lambdaReturning(element: PsiElement): KtLambdaExpression? {
         val parent = element.parent
@@ -548,7 +539,6 @@ class UseContextSensitiveResolution(config: Config) :
 
     // Whether the type comes from the argument itself, as it does for T in listOf(Role.Admin), or
     // can't be pinned down because overloads disagree about it. There is no expected type in both
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun isInferred(call: KtElement, argument: KtExpression, select: (KaType) -> KaType?): Boolean {
         val resolved = call.resolveToCall()?.successfulFunctionCallOrNull()
@@ -575,7 +565,6 @@ class UseContextSensitiveResolution(config: Config) :
 
     // Whether another argument already gives the type parameter its type, as makeRole() does in
     // listOf(Role.Admin, makeRole())
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun isFixedByOtherArgument(
         call: KaFunctionCall<*>,
@@ -591,7 +580,6 @@ class UseContextSensitiveResolution(config: Config) :
         }
 
     // Names the rule could report, and branches that could hold them, may not keep their type once fixed
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun mayLoseQualifier(expression: KtExpression): Boolean {
         val unwrapped = KtPsiUtil.safeDeparenthesize(expression)
@@ -614,7 +602,6 @@ class UseContextSensitiveResolution(config: Config) :
 
     // Whether the arguments decide the type parameter, as they do for listOf and constructors.
     // Assert<T>.isEqualTo(expected: T) gets T from its receiver, not the argument
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun isDecidedByArgument(parameter: KaTypeParameterSymbol, function: KaFunctionSymbol): Boolean {
         if (function is KaConstructorSymbol) return true
@@ -638,7 +625,6 @@ class UseContextSensitiveResolution(config: Config) :
 
     // Context-sensitive resolution looks in the expected type's class, and in the sealed classes it is nested in
     // and extends, like Arrangement for Arrangement.Horizontal
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun KaType.isSearchedIn(owner: KaNamedClassSymbol): Boolean {
         if (isClass(owner)) return true
@@ -653,7 +639,6 @@ class UseContextSensitiveResolution(config: Config) :
 
     // A plain name that already resolves wins over context-sensitive resolution, whether it finds something
     // else, like an imported Admin class, or the target itself, as inside the class. In a type, only classes count
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun isInScope(position: KtElement, target: KaSymbol, isType: Boolean = false): Boolean {
         val name = (target as? KaNamedSymbol)?.name ?: return true
@@ -668,7 +653,6 @@ class UseContextSensitiveResolution(config: Config) :
     }
 
     // An extension like `val Icons.Admin` is only found when an implicit receiver fits it
-    @OptIn(KaContextParameterApi::class)
     context(_: KaSession)
     private fun KaCallableSymbol.isReachableWith(receivers: List<KaType>): Boolean {
         val receiver = receiverParameter?.returnType ?: return true
